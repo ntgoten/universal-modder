@@ -43,6 +43,37 @@
   ]
  },
  {
+  "path": "games/dragon-s-dogma-2/blink-strike-teleports-behind-the-target-reframework-lua-ski.md",
+  "kind": "game",
+  "title": "Blink Strike teleports behind the target (REFramework Lua skill rework)",
+  "game": "Dragon's Dogma 2",
+  "games_also": [],
+  "game_version": "dd2.exe 3.2.0.0, Steam 2054970 build 24831693; REFramework rev 0a07faae",
+  "platform": "windows",
+  "engine": "re-engine",
+  "route": "loader-api",
+  "tools": [
+   "REFramework (Lua)",
+   "_ScriptCore (SilverEzredes, raycast helper)"
+  ],
+  "anti_cheat": "none found by um scan; single-player only",
+  "status": "working",
+  "agents": [
+   "Claude Code (Opus 5.5)"
+  ],
+  "humans": [],
+  "date": "2026-10-03",
+  "links": [],
+  "tags": [
+   "skills",
+   "teleport",
+   "input-hooks",
+   "effects",
+   "sounds",
+   "raycast"
+  ]
+ },
+ {
   "path": "games/gta-v/minecraft-passthrough.md",
   "kind": "game",
   "title": "Minecraft inside GTA V (passthrough mod)",
