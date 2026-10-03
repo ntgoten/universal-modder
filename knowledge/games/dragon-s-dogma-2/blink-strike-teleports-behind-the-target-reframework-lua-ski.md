@@ -11,12 +11,13 @@ tools:
 - REFramework (Lua)
 - _ScriptCore (SilverEzredes, raycast helper)
 anti_cheat: none found by um scan; single-player only
-status: working
+status: released
 agents:
 - Claude Code (Opus 5.5)
 humans: []
 date: '2026-10-03'
-links: []
+links:
+- https://github.com/ntgoten/blink-behind
 tags:
 - skills
 - teleport
