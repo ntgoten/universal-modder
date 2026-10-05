@@ -34,12 +34,12 @@ tags:
 # Dimension Door: aimed teleport spell with a scripted arrival camera (REFramework Lua)
 
 > One REFramework Lua script (`reframework/autorun/DimensionDoor.lua`) adds a D&D-style Dimension Door to
-> Dragon's Dogma 2. A key (B) or gamepad combo (hold L1 + d-pad up) starts the Mage's casting animation
+> Dragon's Dogma 2. A key (B) or gamepad combo (hold the Vocation Action + give Go!) starts the Mage's casting animation
 > (borrowed from the staff motlist) and casts a beam from the character's eyes to the camera aim, up to 500 ft.
 > A second press opens a door of the Frost Boon shimmer next to the player and a visual one at the target.
 > Walking through it plays a scripted arrival: the camera flies over and the character walks out of the far door
 > toward the camera. Then the camera swings back behind the player. Tested in the real game by the human over
-> ~60 iterations (v0.1 to 0.8.0), with a mod-written JSON debug log plus screenshots as the oracle.
+> ~65 iterations (v0.1 to 0.8.1), with a mod-written JSON debug log plus screenshots as the oracle.
 
 ## Setup
 - Dragon's Dogma 2, Steam, Windows 11, dd2.exe 3.2.0.0 (Steam build 24831693).
@@ -100,11 +100,19 @@ Considered and dropped:
 - **Gamepad:** raw pad from `via.hid.GamePad.get_MergedDevice():get_Button()`. `via.hid.GamePadButton` values:
   - d-pad: LUp 1, LDown 2, LLeft 4, LRight 8;
   - shoulders: LTrigTop (L1) 256, RTrigTop (R1) 1024, LTrigBottom 512, RTrigBottom 2048.
-- **Pawn commands on the d-pad:** they arrive as bits in the player's `ButtonTriggerFlags` (UInt64). This build:
-  up (Go!) 0x40000, down 0x20000, left 0x80000, right 0x100000.
-  - We learn them at runtime: a d-pad press without L1/R1 records that frame's trigger bits.
-  - While L1 is held, those bits are cleared: L1 + d-pad becomes a free shortcut layer, like the game's own
-    R1 + d-pad item shortcuts.
+- **The player's action flags:** `ButtonOnFlags / ButtonTriggerFlags / ButtonReleaseFlags / ButtonRepeatFlags`
+  (UInt64) on the player's `app.UserInput` have **one bit per `app.CharacterInput.Action` value** (bit = 1 << index;
+  take the low 32 bits of the dump's enum defaults).
+  - Examples: AttackS 1, AttackL 2, Jump 3, Dash 4, Grab 5, Interact 6, Skill1-4 7-10, Shift1 14, Shift2 15.
+  - The pawn commands are Come 17, Go 18, Help 19 and Wait 20.
+  - JobSpecialAction 29 = the "Vocation Action". Other values: Sheathe 36, Draw 37, Lantern 38, RecoverHpItem 39,
+    RecoverStaminaItem 40, Walk 60.
+  - So a combo can follow the player's own button mapping: "Vocation Action held + Go! triggered" is R1 + d-pad up
+    on default controls, wherever the player rebound it. Clearing bits 17-20 while the Vocation Action is held
+    turns the d-pad into a free shortcut layer.
+  - Raw pad as an alternative: `via.hid.GamePad.get_MergedDevice():get_Button()` (`via.hid.GamePadButton`:
+    LUp 1, LDown 2, LLeft 4, LRight 8, LTrigTop/L1 256, RTrigTop/R1 1024). But physical buttons ignore the
+    player's remapping.
 - **Animations from another vocation:** the player's motlists are
   `animation/ch/ch00/motlist/ch00_00X_com|atk.motlist`.
   - 006 is the staff (Mage); 005 has a charge set too.
@@ -160,7 +168,7 @@ Considered and dropped:
   - door crossing and teleport (`Character.warp`);
   - camera fly-out and hand-back (joint write);
   - walk-out direction;
-  - L1 + d-pad up with pawn commands blocked;
+  - Vocation Action + Go! with pawn commands blocked (on a remapped pad);
   - doors floating at roof edges;
   - no fall damage after a downward jump.
 - **Not verified:** carrying another character through the door; online / pawn-share side effects; every terrain
@@ -217,7 +225,11 @@ Considered and dropped:
     visible far away even at night. No light, no scaling.
 17. **The recoloured target pulsed the whole screen red.** **Cause:** the spark's colour lives in its texture;
     `EffectPlayer.Color` drives a screen-wide layer. **Fix:** don't recolour that effect.
-18. **The RE Asset Library pak extractor found nothing**, not even a catalog mesh path, through
+18. **Once you zero the player's input every frame (your own lock), a held button is only reported on its first
+    frame.** Example: hold the Vocation Action, then press Go! during the lock; the combo never fires. **Fix:**
+    track "held" yourself, from the On/Trigger bit until the Release bit (which is still reported), with a
+    timeout as a safety net. While everything is blocked anyway, accept Go! alone.
+19. **The RE Asset Library pak extractor found nothing**, not even a catalog mesh path, through
     `extractFilesFromPakCache` from Blender's Python. Unresolved. Listing motion names at runtime, through a
     dynamic bank and `getMotionInfo`, was simpler anyway.
 
