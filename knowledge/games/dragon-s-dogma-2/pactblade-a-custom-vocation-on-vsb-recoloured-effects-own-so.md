@@ -10,16 +10,22 @@ route: loader-api
 tools:
 - REFramework (Lua)
 - _DragonCore 1.2.0 + VSB (Vocation & Skill Builder) 1.1.0
-- REE-Lib (efx read/write, patched locally for the DD2New efx version 5965310)
+- REE-Lib (efx read/write; the author's local, unpublished patch for the DD2New efx version 5965310)
 - ree-pak-cli (pack), vgmstream, ffmpeg
-anti_cheat: none found; single-player only (the game's online pawn features are not touched)
-status: in-progress
+anti_cheat: none found; single-player only (online / pawn-share side effects untested)
+status: released
 agents:
 - Claude Code (Opus 5.5)
 humans: []
 date: '2026-10-24'
 links:
-- https://github.com/ntgoten/pactblade
+- https://github.com/ntgoten/pactblade-scriptonly
+- https://github.com/praydog/REFramework
+- https://www.nexusmods.com/dragonsdogma2/mods/1916
+- https://www.nexusmods.com/dragonsdogma2/mods/1917
+- https://github.com/kagenocookie/RE-Engine-Lib
+- https://github.com/eigeen/ree-pak-rs
+- https://github.com/vgmstream/vgmstream
 tags:
 - custom-vocation
 - skills
@@ -35,16 +41,32 @@ tags:
 > script (~7000 lines) that replaces Fighter skills with new ones: eldritch blasts that bind, warp combos, an acid
 > spell, a teleport-dive, a Hex mark, and a recoloured sword look. Effects are recoloured by baking edited copies of
 > game `.efx` files into a pak; custom sounds go through a cloned Wwise bank. Developed over ~300 test builds with the
-> human playing each one; oracle = a mod-written trace file + REFramework's log + screenshots. Not released as a
-> package yet (source only).
+> human playing each one; oracle = a mod-written trace file + REFramework's log + screenshots. Released as 1.0-1.2
+> (October 2026). The script-only edition linked here ships the script, the VSB pack, default settings and guides,
+> and no game files; without the pak (Build steps 2-3, from the player's own install) the effects show in the game's
+> own colours and the custom sounds are silent.
 
 ## Setup
-- Dragon's Dogma 2 4.1.0.0 (after the October 2026 DLC), Steam, Windows 11. REFramework nightly (dinput8.dll).
+- Dragon's Dogma 2 4.1.0.0 (Steam build 25920212, after the paid Dark Arisen expansion launched on 2026-10-09),
+  Steam, Windows 11. REFramework nightly (dinput8.dll).
+- **Needs the paid Dark Arisen expansion** (Steam DLC 2593290), which the author owns. Archfey Combo plays
+  `Job01_RushAttack` / `Job01_RushAttackFinish`, the actions of the expansion's Fighter skill Whirlwind Strike (custom
+  skill 102), and the Misty Dive flash recoloured in the pak (`0/15/0`, `13_ch00_EX_000_00` from `15_EXSkill_DLC`) is
+  an expansion effect. The mod doesn't check ownership: only use it if you own the expansion.
 - **_DragonCore 1.2.0** (actor/action helpers, summons, shells) and **VSB 1.1.0** (custom vocation packs, picked per
   weapon type). Pactblade = VSB pack with `vocation.weapon = "Job01"`; the script checks VSB's pick through
-  `VSB_API.app.picks.Job01`.
-- Paks in `<game>/pak_mods/` (numbered `x000N-Name.pak`, higher number wins on equal paths).
+  `VSB_API.app.picks.Job01`. The 1.1.2 and 1.2 READMEs ask for VSB 1.4.0 or newer, _DragonCore 1.2.0 or newer
+  (tested with 1.2.5) and _ScriptCore (ground checks).
+- Paks in `<game>/pak_mods/` (numbered `x000N-Name.pak`, higher number wins on equal paths). REFramework loads
+  every `.pak` there in directory order with no sort of its own (`IntegrityCheckBypass.cpp`), and NTFS lists
+  names in order, which is why the numbering works.
 - Played as Warfarer (True Warfarer) with a sword; also works as plain Fighter.
+- **Saves and online:** the sword's Magick / element and the Guise's chest bonus are written into the game's item
+  data, which every copy of that item shares. While the game builds a save, or the pawn and owner data it uploads to
+  Capcom's servers, the script puts the original values back and re-applies them afterwards (pre/post hooks on the
+  builders; a 5 s watchdog lets go if no end comes). The author added the upload half because modded stats in that
+  data may get the pawn banned from online pawn sharing. Read from the code; what the servers receive wasn't checked.
+  Single player only: play with Network Features off (Options > Network) while the mod is installed.
 
 ## Route and why
 `loader-api` (REFramework Lua on the managed type system). VSB gives the vocation slot and menu presence; all skill
@@ -64,9 +86,10 @@ of game `.efx` files, played by our own `via.effect.EffectPlayer`s or swapped in
   Skill1-6...) with `CharacterInput:isButtonTrigger(flag)`.
 - **Bind + Quik Fot (Mystic Spearhand):** the charged-bolt action `Job07_MagicBindComplete` fires the real Forbeding
   Bolt projectile itself; its hit opens `Job07ActionCtrl.MagicBindCtrl.get_IsJustMagicBindEnable()`. As a Fighter
-  `processJustMagicBind()` never starts the leap - request `Job07_MagicBindJustLeap` yourself on Jump. The bound enemy
-  is `MagicBindCtrl.get_MagicBindShellHitOwner()` (an `app.Character`); unbind via `<BindCtrl>.get_MagicBind():stop(false)`.
-  To make the bolt hit reliably, move the bolt shell's transform onto your own projectile (or the target) each frame.
+  `processJustMagicBind()` never starts the leap - request `Job07_MagicBindJustLeap` yourself on Jump. The bound
+  enemy is `MagicBindCtrl.get_MagicBindShellHitOwner()` (an `app.Character`); unbind via
+  `<BindCtrl>.get_MagicBind():stop(false)`. To make the bolt hit reliably, move the bolt shell's transform onto your
+  own projectile (or the target) each frame.
 - **Damage:** `app.HitController.calcDamageValue(DamageInfo)` post: `info.Damage` can be set (attacker =
   `<AttackOwnerObject>`, victim = `<DamageGameObject>`). Knock-downs: post-hook `getReactionDamageType` (return a
   `DamageTypeEnum`, e.g. Slam_L 15) and scale `DamageReaction` in `calcDamageReaction`. Direct area damage:
@@ -109,8 +132,15 @@ of game `.efx` files, played by our own `via.effect.EffectPlayer`s or swapped in
    files), edit colours / hide layers with a small REE-Lib tool, save under a NEW path
    (`vfx/effects/pactblade/...`), pack with `ree-pak-cli pack -i <dir> -o pak_mods/x000N-Name.pak` (game closed, or a
    new pak number - running games lock their paks).
-3. Sounds: clone a small monster bank (events/actions/sounds) with new ids and PCM wems (`tools/build_bank.py` in the
-   repo), copy the game's trigger/bank list `.user` files with new paths/ids, pack.
+   Upstream REE-Lib reads the DD2New version number (0db16c3c), but its attribute tables have no DD2New entries, so
+   reading a DD2New effect throws `Unknown DD2New EFX attribute type`. The author's local patch (two files,
+   unpublished): `EfxAttributeTypeRemapper` aliases DD2New to Pragmata (5965300) for type ids and layouts, and
+   `EfxFile` reads each sized attribute inside its own buffer with a strict end-of-stream check and keeps any
+   attribute whose layout doesn't match as raw bytes (`EFXAttributeRaw`), written back unchanged. Effects
+   round-trip, and only the attributes you edit need to decode.
+3. Sounds: clone a small monster bank (events/actions/sounds) with new ids and PCM wems (the author's
+   `tools/build_bank.py`, not in the script-only repo), copy the game's trigger/bank list `.user` files with new
+   paths/ids, pack.
 4. In game: pick Pactblade for Fighter in VSB.
 
 ## Verification
@@ -119,16 +149,17 @@ of game `.efx` files, played by our own `via.effect.EffectPlayer`s or swapped in
 - Crashes: REFramework's `reframework_crash.dmp` + the exception log in `re2_framework_log.txt`. The decisive clue
   was always the burst of caught `Exception thrown in REMethodDefinition::invoke for <method>` lines minutes before
   the crash.
-- Not verified: multiplayer/online pawn behaviour, other vocations' weapons in Warfarer for every skill, performance on
+- Not verified: online / pawn-share side effects, other vocations' weapons in Warfarer for every skill, performance on
   low-end machines.
 
 ## Gotchas
 1. **Crash a few minutes after weapon switches, in random parallel-job code (AI planning, quest manager, effect
-   culling).** Cause: our sword look requested an enchant MATERIAL MODE (`MaterialInterpolationEnchant.requestMaterialModeSub`)
-   on the weapon and blocked the game's own requests there; when the game deleted the weapon mid-mode (or mid-fade
-   after we finished it), `MaterialInterpolation.updateMatarial` touched freed memory. **Fix:** never request material
-   modes on weapons. Read what the mode sets (UserDatas, see above - for Frost Boon's blade glow one float var
-   `2797575560` = 0.15 plus `Enchant_Color1/2`) and write those material values directly on the weapon in hand only.
+   culling).** Cause: our sword look requested an enchant MATERIAL MODE
+   (`MaterialInterpolationEnchant.requestMaterialModeSub`) on the weapon and blocked the game's own requests there;
+   when the game deleted the weapon mid-mode (or mid-fade after we finished it),
+   `MaterialInterpolation.updateMatarial` touched freed memory. **Fix:** never request material modes on weapons.
+   Read what the mode sets (UserDatas, see above - for Frost Boon's blade glow one float var `2797575560` = 0.15
+   plus `Enchant_Color1/2`) and write those material values directly on the weapon in hand only.
 2. **The same crash class from `WeaponElementController.getWeapon(false)` called every frame.** It throws inside the
    game during a vocation change (~180 caught exceptions in 2 s, crash 14 s later). **Fix:** read the weapon from the
    holder slot field (above); nothing is called on the game.
@@ -162,8 +193,10 @@ of game `.efx` files, played by our own `via.effect.EffectPlayer`s or swapped in
     from a file written in `re.on_script_reset`.
 
 ## Assets
-No generated art. Effects are recoloured copies of game files (not in the repo). Custom sounds were cut from the
-author's own audio (not distributed).
+No generated art. The effects are recoloured copies of game `.efx` files, and the three custom sounds (cut from the
+author's own audio) sit in a bank cloned from a game bank, next to copied `.user` lists. None of that is in the repo
+or the script-only release: each player builds the effect copies and the sound lists from their own install (Build
+steps 2-3).
 
 ## Cost and time
 About 6 days of sessions (2026-10-19 to 10-24), ~300 test builds.
